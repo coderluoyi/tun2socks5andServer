@@ -14,15 +14,15 @@ import (
 )
 
 const (
-	// Queue length for outbound packet, arriving for read. Overflow
-	// causes packet drops.
+	// 出站包的队列长度
 	defaultOutQueueLen = 1 << 10
 )
 
 // 基于 Tun (io.ReadWriter) 实现 stack.LinkEndpoint
 // tcpip 协议栈将在 LinkEndpoint 上建立 ipv4.endpoint / tcp.endpoint
 type TunEndpoint struct {
-	*channel.Endpoint
+	// channel.Endpoint 实现了 stack.LinkEndpoint
+	*channel.Endpoint 
 	
 	tun io.ReadWriter
 

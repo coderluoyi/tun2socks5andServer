@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"golang.zx2c4.com/wireguard/tun"
+	"gvisor.dev/gvisor/pkg/tcpip/stack"
 )
 
 const (
@@ -48,7 +49,7 @@ func (t *Tun) Write(packet []byte) (int, error) {
 	return t.nt.Write(t.wBuffs, t.offset)
 }
 
-func Open(name string, mtu uint32) (_ io.ReadWriter, err error) {
+func Open(name string, mtu uint32) (_ stack.LinkEndpoint, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("open tun: %v", r)
