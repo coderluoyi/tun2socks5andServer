@@ -11,6 +11,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 
 	"github.com/coderluoyi/tun2socks_stu/tcpipnet/adapter"
+	"github.com/coderluoyi/tun2socks_stu/tcpipnet/option"
 )
 
 type Config struct {
@@ -54,7 +55,12 @@ func NewStack(cfg *Config) (*stack.Stack, error) {
 	if err := setSpoofing(s, nicID, nicSpoofingEnabled); err != nil {
 		return nil, err
 	}
+
 	if err := setRouteTable(s, nicID); err != nil {
+		return nil, err
+	}
+	
+	if err := option.WithDefault()(s); err != nil {
 		return nil, err
 	}
 
