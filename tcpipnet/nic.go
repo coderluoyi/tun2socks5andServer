@@ -33,7 +33,7 @@ func CreateNICWithOptions(s *stack.Stack, nicID tcpip.NICID, ep stack.LinkEndpoi
 }
 
 // sets promiscuous mode in the given NICs.
-func SetPromiscuousMode(s *stack.Stack, nicID tcpip.NICID, v bool) error {
+func setPromiscuousMode(s *stack.Stack, nicID tcpip.NICID, v bool) error {
 	if err := s.SetPromiscuousMode(nicID, v); err != nil {
 		return fmt.Errorf("set promiscuous mode: %s", err)
 	}
@@ -42,7 +42,7 @@ func SetPromiscuousMode(s *stack.Stack, nicID tcpip.NICID, v bool) error {
 
 // sets address spoofing in the given NICs, allowing
 // endpoints to bind to any address in the NIC.
-func SetSpoofing(s *stack.Stack, nicID tcpip.NICID, v bool) error {
+func setSpoofing(s *stack.Stack, nicID tcpip.NICID, v bool) error {
 	if err := s.SetSpoofing(nicID, v); err != nil {
 		return fmt.Errorf("set spoofing: %s", err)
 	}

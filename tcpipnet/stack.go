@@ -8,6 +8,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/transport/icmp"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/tcp"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/udp"
+	"gvisor.dev/gvisor/pkg/tcpip/header"
 
 	"github.com/coderluoyi/tun2socks_stu/tcpipnet/adapter"
 )
@@ -34,7 +35,6 @@ func NewStack(cfg *Config) (*stack.Stack, error) {
 
 	nicID := tcpip.NICID(s.UniqueID())
 
-
 	if err := CreateNICWithOptions(s, nicID, cfg.LinkEndpoint); err != nil {
 		return nil, err
 	}
@@ -47,7 +47,30 @@ func NewStack(cfg *Config) (*stack.Stack, error) {
 		return nil, err
 	}
 
+	if err := setPromiscuousMode(s, nicID, nicPromiscuousModeEnabled); err != nil {
+		return nil, err
+	}
 
+	if err := setSpoofing(s, nicID, nicSpoofingEnabled); err != nil {
+		return nil, err
+	}
+	if err := setRouteTable(s, nicID); err != nil {
+		return nil, err
+	}
 
 	return s, nil
+}
+
+func setRouteTable(s *stack.Stack, nicID tcpip.NICID) error {
+	s.SetRouteTable([]tcpip.Route{
+		{
+			Destination: header.IPv4EmptySubnet,
+			NIC:         nicID,
+		},
+		{
+			Destination: header.IPv6EmptySubnet,
+			NIC:         nicID,
+		},
+	})
+	return nil
 }
