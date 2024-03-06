@@ -9,7 +9,7 @@ import (
 	"gvisor.dev/gvisor/pkg/tcpip/transport/tcp"
 	"gvisor.dev/gvisor/pkg/tcpip/transport/udp"
 
-	"github.com/coderluoyi/tun2socks_stu/tcpip/adapter"
+	"github.com/coderluoyi/tun2socks_stu/tcpipnet/adapter"
 )
 
 type Config struct {
@@ -18,7 +18,7 @@ type Config struct {
 	TransportHandler adapter.TransportHandler
 }
 
-func NewStack() (*stack.Stack, error) {
+func NewStack(cfg *Config) (*stack.Stack, error) {
 	s := stack.New(stack.Options{
 		NetworkProtocols: []stack.NetworkProtocolFactory{
 			ipv4.NewProtocol,
@@ -31,6 +31,23 @@ func NewStack() (*stack.Stack, error) {
 			icmp.NewProtocol6,
 		},
 	})
+
+	nicID := tcpip.NICID(s.UniqueID())
+
+
+	if err := CreateNICWithOptions(s, nicID, cfg.LinkEndpoint); err != nil {
+		return nil, err
+	}
+
+	if err := setTCPHandler(s, cfg.TransportHandler.HandleTCP); err != nil {
+		return nil, err
+	}
+
+	if err := setUDPHandler(s, cfg.TransportHandler.HandleUDP); err != nil {
+		return nil, err
+	}
+
+
 
 	return s, nil
 }
