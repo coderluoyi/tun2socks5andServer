@@ -40,6 +40,7 @@ func handleTCPConn(originConn adapter.TCPConn) {
 
 	log.Info("[TCP] %s <-> %s", metadata.SourceAddress(), metadata.DestinationAddress())
 	pipe(originConn, remoteConn)
+	// originConn 为什么是 原始连接，因为它的 属性 - id 吗，还是跟 forwarder（Request）有关系？ 
 }
 
 // pipe copies copy data to & from provided net.Conn(s) bidirectionally.

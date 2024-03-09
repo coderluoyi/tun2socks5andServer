@@ -74,7 +74,8 @@ func (ss *Socks5) Addr() string{
 func (ss *Socks5) DialContext(ctx context.Context, metadata *Metadata) (c net.Conn, err error) {
 	network := "tcp"
 
-	c, err = dialer.DialContext(ctx, network, ss.Addr())
+	// c, err = dialer.DialContext(ctx, network, ss.Addr())
+	c, err = net.Dial(network, ss.Addr())
 	if err != nil {
 		return nil, fmt.Errorf("connect to %s: %w", ss.Addr(), err)
 	}
@@ -84,15 +85,19 @@ func (ss *Socks5) DialContext(ctx context.Context, metadata *Metadata) (c net.Co
 		safeConnClose(c, err)
 	}(c)
 
-	_, err = ClientHandshake(c, serializeSocksAddr(metadata), CMD_CONNECT)
-	return
+	a, err := ClientHandshake(c, serializeSocksAddr(metadata), CMD_CONNECT)
+	if a == nil {
+		return nil, fmt.Errorf("[socks5 handshake failed] %s", err)
+	}
+	return c, nil
 }
 
 func (ss *Socks5) DialUDP(*Metadata) (_ net.PacketConn, err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), tcpConnectTimeout)
-	defer cancel()
+	/* // ctx, cancel := context.WithTimeout(context.Background(), tcpConnectTimeout)
+	// defer cancel()
 
-	c, err := dialer.DialContext(ctx, "tcp", ss.Addr())
+	// c, err := dialer.DialContext(ctx, "tcp", ss.Addr())
+	c, err := net.Dial("tcp", ss.Addr())
 	if err != nil {
 		err = fmt.Errorf("connect to %s: %w", ss.Addr(), err)
 		return
@@ -138,7 +143,7 @@ func (ss *Socks5) DialUDP(*Metadata) (_ net.PacketConn, err error) {
 		return nil, fmt.Errorf("invalid UDP binding address: %#v", addr)
 	}
 
-	if bindAddr.IP.IsUnspecified() { /* e.g. "0.0.0.0" or "::" */
+	if bindAddr.IP.IsUnspecified() { // e.g. "0.0.0.0" or "::" /
 		udpAddr, err := net.ResolveUDPAddr("udp", ss.Addr())
 		if err != nil {
 			return nil, fmt.Errorf("resolve udp address %s: %w", ss.Addr(), err)
@@ -146,17 +151,23 @@ func (ss *Socks5) DialUDP(*Metadata) (_ net.PacketConn, err error) {
 		bindAddr.IP = udpAddr.IP
 	}
 
-	return &socksPacketConn{PacketConn: pc, rAddr: bindAddr, tcpConn: c}, nil
+	return &socksPacketConn{PacketConn: pc, rAddr: bindAddr, tcpConn: c}, nil */
+
+	pc, err := dialer.ListenPacket("udp", "")
+	if err != nil {
+		return nil, err
+	}
+	return &socksPacketConn{PacketConn: pc}, nil
 }
 
 type socksPacketConn struct {
 	net.PacketConn
 
-	rAddr   net.Addr
-	tcpConn net.Conn
+	// rAddr   net.Addr
+	// tcpConn net.Conn
 }
 
-func (pc *socksPacketConn) WriteTo(b []byte, addr net.Addr) (n int, err error) {
+/* func (pc *socksPacketConn) WriteTo(b []byte, addr net.Addr) (n int, err error) {
 	var packet []byte
 	if ma, ok := addr.(*MetaAddr); ok {
 		packet, err = EncodeUDPPacket(serializeSocksAddr(ma.Metadata()), b)
@@ -168,7 +179,20 @@ func (pc *socksPacketConn) WriteTo(b []byte, addr net.Addr) (n int, err error) {
 		return
 	}
 	return pc.PacketConn.WriteTo(packet, pc.rAddr)
+} */
+
+func (pc *socksPacketConn) WriteTo(b []byte, addr net.Addr) (int, error) {
+	if udpAddr, ok := addr.(*net.UDPAddr); ok {
+		return pc.PacketConn.WriteTo(b, udpAddr)
+	}
+
+	udpAddr, err := net.ResolveUDPAddr("udp", addr.String())
+	if err != nil {
+		return 0, err
+	}
+	return pc.PacketConn.WriteTo(b, udpAddr)
 }
+
 
 func (pc *socksPacketConn) ReadFrom(b []byte) (int, net.Addr, error) {
 	n, _, err := pc.PacketConn.ReadFrom(b)
@@ -192,7 +216,7 @@ func (pc *socksPacketConn) ReadFrom(b []byte) (int, net.Addr, error) {
 }
 
 func (pc *socksPacketConn) Close() error {
-	pc.tcpConn.Close()
+	// pc.tcpConn.Close()
 	return pc.PacketConn.Close()
 }
 
@@ -333,7 +357,7 @@ func ClientHandshake(rw io.ReadWriter, addr Addr, command Command) (Addr, error)
     buf := make([]byte, MaxAddrLen)
     var method = METHOD_NO_AUTH
     // 1. VER, NMETHODS, METHODS
-    if _, err := rw.Write([]byte{SOCKS5_VER, 0x01 /* NMETHODS */, byte(method)}); err != nil {
+    if _, err := rw.Write([]byte{byte(SOCKS5_VER), byte(0x01) /* NMETHODS */, byte(method)}); err != nil {
         return nil, err
     }
 
@@ -351,14 +375,19 @@ func ClientHandshake(rw io.ReadWriter, addr Addr, command Command) (Addr, error)
     }
 
     // 3. request : VER, CMD, RSV, ADDR
-    if _, err := rw.Write(bytes.Join([][]byte{{SOCKS5_VER, byte(command), 0x00 /* RSV */}, addr}, nil)); err != nil {
+	snd := bytes.Join([][]byte{{byte(SOCKS5_VER), byte(command), byte(0x00) /* RSV */}, addr}, nil)
+    if _, err := rw.Write(snd); err != nil {
         return nil, err
     }
 
     // 4. reply : VER, CMD, RSV, ADDR
-    if _, err := rw.Write(bytes.Join([][]byte{{SOCKS5_VER, byte(command), 0x00 /* RSV */}, addr}, nil)); err != nil {
-        return nil, err
-    }
+    if _, err := io.ReadFull(rw, buf[:3]); err != nil {
+		return nil, err
+	}
+
+	if rep := Reply(buf[1]); rep != 0x00 /* SUCCEEDED */ {
+		return nil, fmt.Errorf("%s: %s", command, rep)
+	}
 
     return ReadAddr(rw, buf)
 }

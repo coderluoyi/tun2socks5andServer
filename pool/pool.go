@@ -58,7 +58,9 @@ func (bufPool *Pool) Put(buf []byte) error {
 		return errors.New("bufPool Put() buffer size must be 2^n and range(1B, 64KB)")
 	}
 
-	bufPool.buffers[b].Put(&buf)
+	//lint:ignore SA6002 ignore temporarily
+	//nolint
+	bufPool.buffers[b].Put(buf)
 	return nil
 }
 
