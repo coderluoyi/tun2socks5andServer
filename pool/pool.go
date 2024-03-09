@@ -6,7 +6,6 @@ import (
 	"sync"
 )
 
-
 // 获取 32 位整数的最高 bit 位位置
 func msb(size int) uint16 {
 	return uint16(bits.Len32(uint32(size)) - 1)
@@ -63,4 +62,10 @@ func (bufPool *Pool) Put(buf []byte) error {
 	return nil
 }
 
+func Get(size int) []byte{
+	return bufPool.Get(size)
+}
 
+func Put(buf []byte) error{
+	return bufPool.Put(buf)
+}
