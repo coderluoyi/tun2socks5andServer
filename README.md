@@ -1,4 +1,4 @@
-[toc]
+[TOC]
 ***
 
 # tun2socks_stu
