@@ -6,7 +6,7 @@
   - 使用其他人实现的 socks5 server
 - 部署 tun2socks5 客户端
   - 修改 main.go 中的参数，之后编译运行
-  - 然后运行 wintun 路由引流脚本
+  - 然后以管理员权限，运行 wintun 路由引流脚本
 
 目前实现的内容：
 
