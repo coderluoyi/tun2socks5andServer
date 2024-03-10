@@ -1,7 +1,4 @@
-[TOC]
-***
-
-# tun2socks_stu
+# tun2socks5andServer
 
 ## 使用方法
 - 部署 socks5 服务
