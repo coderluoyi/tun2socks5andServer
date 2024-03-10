@@ -8,6 +8,11 @@
   - 修改 main.go 中的参数，之后编译运行
   - 然后以管理员权限，运行 wintun 路由引流脚本
 
+## 网速测试
+[开启代理后的网速](./doc/开启代理后的网络测试.png)
+
+[未开启代理的正常网速](./doc/未开启代理的正常网络测速.png)
+
 ## 目前实现的内容：
 
 - [x] socks5 client power by golang / wireguard_wintun / gvisor_tcpip
