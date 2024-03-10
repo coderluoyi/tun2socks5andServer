@@ -1,6 +1,9 @@
+[toc]
+***
+
 # tun2socks_stu
 
-使用方法
+## 使用方法
 - 部署 socks5 服务
   - 使用我的server：将 socks.lua 使用 luajit 编译后放置到 ...openresty/nginx/lua 目录下，并启动 nginx
   - 使用其他人实现的 socks5 server
@@ -8,7 +11,7 @@
   - 修改 main.go 中的参数，之后编译运行
   - 然后以管理员权限，运行 wintun 路由引流脚本
 
-目前实现的内容：
+## 目前实现的内容：
 
 - [x] socks5 client power by golang / wireguard_wintun / gvisor_tcpip
   - 功能
@@ -27,7 +30,8 @@
     - [x] TCP (目前只支持 TCP)
   - 认证方式
     - [x] 无密码认证
-    后续计划
+    
+## 后续计划
 1. BUG 查缺补漏
 2. TLS 握手，加密代理服务器和客户端的认证过程及通信过程
 3. 用户密码的认证方式
