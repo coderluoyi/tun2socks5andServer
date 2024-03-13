@@ -1,5 +1,8 @@
 local _M = {_VERSION = '0.0.1'}
 
+-- 模拟内网资源 2.3.0.1
+local resource = {"2.3.0.1", "192.168.43.33"}
+
 local dns_resolver = require "resty.dns.resolver"
 local dnsr = dns_resolver : new {
     nameservers = {"114.114.114.114", {"8.8.8.8", 53}},
@@ -212,6 +215,10 @@ local function stringify_addr(atyp, addr)
     local dst = addr
     if atyp == IPV4 then
         dst = fmt("%d.%d.%d.%d", byte(addr, 1), byte(addr, 2), byte(addr, 3), byte(addr, 4))
+        -- 判断是否是内网资源
+        if dst == resource[1] then
+            dst = resource[2]
+        end
     elseif atyp == IPV6 then
         dst = fmt("[%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X:%02X%02X]", 
             byte(addr, 1), byte(addr, 2),
@@ -305,7 +312,12 @@ function _M.run(timeout, conn_timeout)
     upsock:settimeout(conn_timeout)
 
     local addr = stringify_addr(requests.atyp, requests.addr)
+
     local ok, err = upsock:connect(addr, requests.port)
+    
+    addr = fmt("%s:%d", addr, requests.port)
+    ngx_log(DEBUG, addr)
+    
     if err then
         ngx_log(ERR, "connect request " .. requests.addr ..
             ":" .. requests.port .. " error: ", err)
@@ -314,8 +326,7 @@ function _M.run(timeout, conn_timeout)
         return ngx_exit(ERROR)
     end
     
-    addr = fmt("%s:%d", addr, requests.port)
-    ngx_log(DEBUG, addr)
+    
 
     upsock:settimeout(timeout)
 
