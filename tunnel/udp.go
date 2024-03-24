@@ -6,12 +6,50 @@ import (
 	"net"
 	"sync"
 	"time"
+	"encoding/binary"
 
 	"github.com/coderluoyi/tun2socks_stu/log"
 	"github.com/coderluoyi/tun2socks_stu/pool"
 	"github.com/coderluoyi/tun2socks_stu/tcpipnet/adapter"
-	"github.com/coderluoyi/tun2socks_stu/dns" 
+
+	"github.com/miekg/dns"
 )
+
+func resolve(msg []byte) ([]string, error) {
+	if len(msg) < 12 {
+		return nil, fmt.Errorf("invalid DNS message: too short")
+	}
+
+	var results []string
+
+	questionsCount := binary.BigEndian.Uint16(msg[4:6])
+
+	questions := msg[12:]
+
+	for i := 0; i < int(questionsCount); i++ {
+		var questionName string
+		for {
+			len := int(questions[0])
+			questionName += string(questions[1 : len+1])
+			questions = questions[len+1:]
+			len = int(questions[0])
+			if len == 0 {
+				break
+			}
+			questionName += "."
+		}
+		questions = questions[1:]
+
+		questionType := binary.BigEndian.Uint16(questions[0:2])
+		questionClass := binary.BigEndian.Uint16(questions[2:4])
+
+		questions = questions[4:]
+
+		result := fmt.Sprintf("%s*%s*%s", questionName, dns.Type(questionType), dns.Class(questionClass))
+		results = append(results, result)
+	}
+	return results, nil
+}
 
 // _udpSessionTimeout is the default timeout for each UDP session.
 var _udpSessionTimeout = 20 * time.Second
@@ -75,7 +113,7 @@ func handleUDPConn(uc adapter.UDPConn) {
 			log.Info(err.Error())
 			return
 		}
-		res, err := dns.resolve(dns_pdu)
+		res, err := resolve(dns_pdu)
 		if err != nil {
 			return
 		}
