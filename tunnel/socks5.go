@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/coderluoyi/tun2socks_stu/tunnel/dialer"
+	// "github.com/coderluoyi/tun2socks_stu/tunnel/dialer"
 )
 
 
@@ -30,7 +30,7 @@ type Proxy interface {
 
 type Dialer interface {
 	DialContext(context.Context, *Metadata) (net.Conn, error)
-	DialUDP(*Metadata) (net.PacketConn, error)
+	DialUDP(*Metadata) (*net.UDPConn, error)
 }
 
 var _defaultDialer Dialer
@@ -53,7 +53,7 @@ func DialContext(ctx context.Context, metadata *Metadata) (net.Conn, error) {
 }
 
 // DialUDP uses default Dialer to dial UDP.
-func DialUDP(metadata *Metadata) (net.PacketConn, error) {
+func DialUDP(metadata *Metadata) (*net.UDPConn, error) {
 	return _defaultDialer.DialUDP(metadata)
 }
 
@@ -92,7 +92,17 @@ func (ss *Socks5) DialContext(ctx context.Context, metadata *Metadata) (c net.Co
 	return c, nil
 }
 
-func (ss *Socks5) DialUDP(*Metadata) (_ net.PacketConn, err error) {
+func (ss *Socks5) DialUDP(m *Metadata) (_ *net.UDPConn, err error) {
+
+	pc, err := net.DialUDP("udp", nil, &net.UDPAddr{
+		IP: m.DstIP,
+		Port: int(m.DstPort),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return pc, nil
+
 	/* // ctx, cancel := context.WithTimeout(context.Background(), tcpConnectTimeout)
 	// defer cancel()
 
@@ -152,12 +162,6 @@ func (ss *Socks5) DialUDP(*Metadata) (_ net.PacketConn, err error) {
 	}
 
 	return &socksPacketConn{PacketConn: pc, rAddr: bindAddr, tcpConn: c}, nil */
-
-	pc, err := dialer.ListenPacket("udp", "")
-	if err != nil {
-		return nil, err
-	}
-	return &socksPacketConn{PacketConn: pc}, nil
 }
 
 type socksPacketConn struct {

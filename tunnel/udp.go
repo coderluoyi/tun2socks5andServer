@@ -1,6 +1,7 @@
 package tunnel
 
 import (
+	"fmt"
 	"io"
 	"net"
 	"sync"
@@ -9,10 +10,11 @@ import (
 	"github.com/coderluoyi/tun2socks_stu/log"
 	"github.com/coderluoyi/tun2socks_stu/pool"
 	"github.com/coderluoyi/tun2socks_stu/tcpipnet/adapter"
+	"github.com/coderluoyi/tun2socks_stu/resolver"
 )
 
 // _udpSessionTimeout is the default timeout for each UDP session.
-var _udpSessionTimeout = 60 * time.Second
+var _udpSessionTimeout = 20 * time.Second
 
 func SetUDPTimeout(t time.Duration) {
 	_udpSessionTimeout = t
@@ -36,18 +38,68 @@ func handleUDPConn(uc adapter.UDPConn) {
 		log.Warning("[UDP] dial %s: %v", metadata.DestinationAddress(), err)
 		return
 	}
+	defer pc.Close()
+
 	metadata.MidIP, metadata.MidPort = parseAddr(pc.LocalAddr())
 
 	// TODO UDPTracker
-	defer pc.Close()
 
 	var remote net.Addr
+
 	if udpAddr := metadata.UDPAddr(); udpAddr != nil {
 		remote = udpAddr
 	} else {
 		remote = metadata.Addr()
 	}
-	pc = newSymmetricNATPacketConn(pc, metadata)
+	// pc = newSymmetricNATPacketConn(pc, metadata)
+
+	if metadata.DstPort == 53 || metadata.SrcPort == 53 {
+		log.Info("this is DNS req ...")
+
+		buf := pool.Get(pool.MaxSegmentSize)
+		defer pool.Put(buf)
+
+		uc.SetReadDeadline(time.Now().Add(_udpSessionTimeout))
+		n, _, err := uc.ReadFrom(buf)
+	    // str := string(buf[:n])
+		// fmt.Println(str)
+		if ne, ok := err.(net.Error); ok && ne.Timeout() {
+			return
+		} else if err == io.EOF {
+			return
+		} else if err != nil {
+			return
+		}
+		dns_pdu := buf[:n]
+		if _, err = pc.Write(dns_pdu); err != nil {
+			log.Info(err.Error())
+			return
+		}
+		res, err := resolver.resolve(dns_pdu)
+		if err != nil {
+			return
+		}
+		fmt.Println(res)
+
+		pc.SetReadDeadline(time.Now().Add(_udpSessionTimeout))
+		uc.SetReadDeadline(time.Now().Add(_udpSessionTimeout))
+
+
+		n, err = pc.Read(buf)
+		// str = string(buf[:n])
+		// fmt.Println(str)
+		if ne, ok := err.(net.Error); ok && ne.Timeout() {
+			return
+		} else if err == io.EOF {
+			return
+		} else if err != nil {
+			return
+		}
+		if _, err = uc.WriteTo(buf[:n], nil); err != nil {
+			return
+		}
+		pc.SetReadDeadline(time.Now().Add(_udpSessionTimeout))
+	}
 
 	log.Info("[UDP] %s <-> %s", metadata.SourceAddress(), metadata.DestinationAddress())
 	pipePacket(uc, pc, remote)
