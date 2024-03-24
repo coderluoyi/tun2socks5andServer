@@ -91,7 +91,7 @@ func handleUDPConn(uc adapter.UDPConn) {
 	}
 	// pc = newSymmetricNATPacketConn(pc, metadata)
 
-	if metadata.DstPort == 53 || metadata.SrcPort == 53 {
+	if metadata.DstPort == 53 {
 		log.Info("this is DNS req ...")
 
 		buf := pool.Get(pool.MaxSegmentSize)
@@ -137,6 +137,7 @@ func handleUDPConn(uc adapter.UDPConn) {
 			return
 		}
 		pc.SetReadDeadline(time.Now().Add(_udpSessionTimeout))
+		return
 	}
 
 	log.Info("[UDP] %s <-> %s", metadata.SourceAddress(), metadata.DestinationAddress())
