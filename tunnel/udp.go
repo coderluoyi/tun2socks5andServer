@@ -10,7 +10,7 @@ import (
 	"github.com/coderluoyi/tun2socks_stu/log"
 	"github.com/coderluoyi/tun2socks_stu/pool"
 	"github.com/coderluoyi/tun2socks_stu/tcpipnet/adapter"
-	"github.com/coderluoyi/tun2socks_stu/resolver"
+	"github.com/coderluoyi/tun2socks_stu/dns" 
 )
 
 // _udpSessionTimeout is the default timeout for each UDP session.
@@ -75,7 +75,7 @@ func handleUDPConn(uc adapter.UDPConn) {
 			log.Info(err.Error())
 			return
 		}
-		res, err := resolver.resolve(dns_pdu)
+		res, err := dns.resolve(dns_pdu)
 		if err != nil {
 			return
 		}

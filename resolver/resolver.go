@@ -1,4 +1,4 @@
-package resolver
+package dns
 
 import (
 	"encoding/binary"
